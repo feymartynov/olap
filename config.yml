@@ -1,0 +1,132 @@
+references:
+  # --- addresses ---
+  - name: countries
+    fields:
+      - name: name
+        type: string
+  - name: regions
+    fields:
+      - name: name
+        type: string
+      - name: country
+        type: reference
+        reference: countries
+  - name: cities
+    fields:
+      - name: name
+        type: string
+      - name: region
+        type: reference
+        reference: regions
+  - name: addresses
+    fields:
+      - name: street_address
+        type: string
+      - name: city
+        type: reference
+        reference: cities
+
+  # --- companies ---
+  - name: branches
+    fields:
+      - name: name
+        type: string
+      - name: address
+        type: reference
+        reference: addresses
+  - name: customers
+    fields:
+      - name: name
+        type: string
+      - name: address
+        type: reference
+        reference: addresses
+
+  # --- products ---
+  - name: brands
+    fields:
+      - name: name
+        type: string
+  - name: categories
+    fields:
+      - name: name
+        type: string
+      - name: parent
+        type: reference
+        reference: categories
+  - name: products
+    fields:
+      - name: name
+        type: string
+      - name: brand
+        type: reference
+        reference: brands
+
+cubes:
+  - name: sales
+    fields:
+      - name: timestamp
+        type: timestamp
+      - name: branch
+        type: reference
+        reference: branches
+      - name: customer
+        type: reference
+        reference: customers
+      - name: product
+        type: reference
+        reference: products
+      - name: price
+        type: money
+        currency: RUB
+      - name: quantity
+        type: integer
+      - name: total_amount
+        type: money
+        currency: RUB
+    dimensions:
+      - field: timestamp
+        hierarchy:
+          - level: second
+            include: false
+          - level: minute
+            include: false
+          - level: hour
+            include: false
+          - level: day
+            include: true
+          - level: week
+            include: true
+          - level: month
+            include: true
+          - level: quarter
+            include: true
+          - level: year
+            include: true
+      - field: branch
+        hierarchy:
+          - level: address
+            include: false
+          - level: city
+            include: true
+          - level: region
+            include: true
+          - level: country
+            include: true
+      - field: customer
+        hierarchy:
+          - level: address
+            include: false
+          - level: city
+            include: true
+          - level: region
+            include: true
+          - level: country
+            include: true
+      - field: product
+        hierarchy:
+          - level: brand
+            include: true
+    aggregations:
+      - name: profit
+        formula: sum(total_amount)
