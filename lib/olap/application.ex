@@ -5,7 +5,7 @@ defmodule Olap.Application do
 
   def start(_type, _args) do
     with :ok <- init() do
-      children = []
+      children = [{Task.Supervisor, name: Olap.TaskSupervisor}]
       opts = [strategy: :one_for_one, name: Olap.Supervisor]
       Supervisor.start_link(children, opts)
     end

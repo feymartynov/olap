@@ -3,11 +3,12 @@ defmodule Olap.Cube.Aggregator do
 
   alias Olap.{Cube, Formula}
   alias Olap.Cube.Aggregation
+  alias __MODULE__.AddressCombinator
 
   @formula_timeout 5000
 
-  def aggregate(%Cube{} = cube, address) do
-    jobs = cube |> aggregation_jobs(address)
+  def aggregate(%Cube{} = cube, %AddressCombinator.CoordinateTreesSet{} = coordiante_trees_set) do
+    jobs = cube |> aggregation_jobs(coordiante_trees_set)
 
     async_stream_opts = [timeout: @formula_timeout, on_timeout: :kill_task]
     results = jobs |> Task.async_stream(&formula_task/1, async_stream_opts)
@@ -18,25 +19,10 @@ defmodule Olap.Cube.Aggregator do
     |> Stream.run()
   end
 
-  defp aggregation_jobs(cube, address) do
-    address
-    |> address_combinations()
+  defp aggregation_jobs(cube, coordiante_trees_set) do
+    coordiante_trees_set
+    |> AddressCombinator.iterator()
     |> Stream.flat_map(fn address -> Stream.map(cube.aggregations, &{cube, &1, address}) end)
-  end
-
-  defp address_combinations([]), do: Stream.map([[]], & &1)
-
-  defp address_combinations([head | tail]) do
-    Stream.flat_map(address_combinations(tail), fn item ->
-      head |> zoom_out() |> Stream.map(&[&1 | item])
-    end)
-  end
-
-  defp zoom_out(coordinate) do
-    Stream.unfold(coordinate, fn
-      [] -> nil
-      [_ | t] = l -> {l, t}
-    end)
   end
 
   defp formula_task({cube, %Aggregation{formula: formula}, address}) do

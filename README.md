@@ -1,16 +1,17 @@
 Toy in-memory OLAP database in Elixir with ETS backend.
 
-## Features:
+## Features
 
 * Multidimensional cubes
-* Hierarchy aggregations by predefined formulas
+* Hierarchy aggregations by predefined formulas evaluated in parallel
 * References for building snowflake schemas
 * Formula language with extensible functions
 * Extensible data types
+* Batch insert with aggregation optimization
 
-## TODO:
+## TODO
 
+* Data import
 * MDX queries
 * Integration with Excel through ODBO
-* Data import
 * Load testing

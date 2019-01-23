@@ -5,6 +5,9 @@ defmodule Olap.Cube do
 
   alias Olap.{FieldSet, Formula}
   alias __MODULE__.{Aggregator, Dimension}
+  alias __MODULE__.Aggregator.AddressCombinator.CoordinateTreesSet
+
+  @aggregation_timeout 60 * 60 * 1000
 
   defstruct name: nil,
             field_set: nil,
@@ -76,6 +79,10 @@ defmodule Olap.Cube do
     end
   end
 
+  def get_address(%__MODULE__{dimensions: dimensions}, item) do
+    build_address(dimensions, item)
+  end
+
   def get(name) do
     case :ets.lookup(:cubes, name) do
       [{^name, cube}] -> cube
@@ -83,12 +90,29 @@ defmodule Olap.Cube do
     end
   end
 
-  def put(%__MODULE__{field_set: field_set, dimensions: dimensions, table: table} = cube, item) do
-    with :ok <- field_set |> FieldSet.validate(item),
-         {:ok, address} <- dimensions |> build_address(item),
-         true = :ets.insert(table, {address, item}),
-         :ok <- cube |> Aggregator.aggregate(address),
-         do: {:ok, address}
+  def put(%__MODULE__{table: table, dimensions: dimensions} = cube, items) do
+    with {:ok, items} <- cube |> validate(items) do
+      coordinate_trees_set =
+        Enum.reduce(items, CoordinateTreesSet.new(dimensions), fn {address, _} = item, acc ->
+          :ets.insert(table, item)
+          acc |> CoordinateTreesSet.put_address(address)
+        end)
+
+      fun = fn -> cube |> Aggregator.aggregate(coordinate_trees_set) end
+      Olap.TaskSupervisor |> Task.Supervisor.start_child(fun, timeout: @aggregation_timeout)
+      :ok
+    end
+  end
+
+  defp validate(%__MODULE__{field_set: field_set, dimensions: dimensions}, items) do
+    Enum.reduce_while(items, {:ok, []}, fn item, {:ok, acc} ->
+      with :ok <- field_set |> FieldSet.validate(item),
+           {:ok, address} <- dimensions |> build_address(item) do
+        {:cont, {:ok, [{address, item} | acc]}}
+      else
+        other -> {:halt, other}
+      end
+    end)
   end
 
   defp build_address(dimensions, item) do
