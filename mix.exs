@@ -23,7 +23,8 @@ defmodule Olap.MixProject do
       {:yaml_elixir, "~> 2.1"},
       {:money, "~> 1.3"},
       {:timex, "~> 3.5"},
-      {:nimble_parsec, "~> 0.5"}
+      {:nimble_parsec, "~> 0.5"},
+      {:nimble_csv, "~> 0.3"}
     ]
   end
 end

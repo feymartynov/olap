@@ -12,15 +12,27 @@ defmodule Olap.Formula do
   end
 
   def evaluate(%__MODULE__{ast: ast}, items) when is_list(items) do
-    {:ok, reduce_ast(ast, items)}
+    reduce_ast(ast, items)
   end
 
   defp reduce_ast(%AST.Field{field: %FieldSet.Field{name: name}}, items) do
-    items |> Enum.map(& &1[name])
+    {:ok, items |> Enum.map(& &1[name])}
   end
 
   defp reduce_ast(%AST.Function{impl: impl, args: args}, items) do
-    args |> Enum.map(&reduce_ast(&1, items)) |> impl.()
+    args
+    |> Enum.reduce_while({:ok, []}, fn arg, {:ok, acc} ->
+      case reduce_ast(arg, items) do
+        {:ok, []} -> {:halt, {:ok, nil}}
+        {:ok, result} -> {:cont, {:ok, [result | acc]}}
+        other -> {:halt, other}
+      end
+    end)
+    |> case do
+      {:ok, nil} -> {:ok, nil}
+      {:ok, args} -> args |> Enum.reverse() |> impl.()
+      other -> other
+    end
   end
 end
 

@@ -38,15 +38,15 @@ defmodule Olap.Reference do
   end
 
   def put(%__MODULE__{table: table, field_set: field_set}, item) when is_map(item) do
-    with id when not is_nil(id) <- item["id"],
-         :ok <- field_set |> FieldSet.validate(item),
-         true <- :ets.insert(table, {id, item}) do
-      :ok
-    else
-      nil -> {:error, "Missing `id` field in #{inspect(item)}"}
-      other -> other
+    with {:ok, id} <- cast_id(item),
+         :ok <- field_set |> FieldSet.validate(item) do
+      :ets.insert(table, {id, item})
+      {:ok, id}
     end
   end
+
+  defp cast_id(%{"id" => id}), do: {:ok, id}
+  defp cast_id(item), do: {:error, "Missing `id` field in #{inspect(item)}"}
 
   def fetch(%__MODULE__{table: table}, id) do
     case :ets.lookup(table, id) do

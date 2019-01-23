@@ -1,12 +1,12 @@
 defmodule Olap.Formula.Functions.Sum do
   @behaviour Olap.Formula.Function
 
-  alias Olap.Types.{Integer, Money}
+  alias Olap.Types
 
   def signatures do
     %{
-      {[Integer], Integer} => &sum_int/1,
-      {[Money], Money} => &sum_money/1
+      {[Types.Integer], Types.Integer} => &sum_int/1,
+      {[Types.Money], Types.Money} => &sum_money/1
     }
   end
 

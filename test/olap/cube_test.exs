@@ -23,7 +23,8 @@ defmodule Olap.CubeTest do
     }
 
     cube = Cube.get("sales")
-    assert :ok = cube |> Cube.put([sale])
+    assert {:ok, task} = cube |> Cube.put([sale])
+    Task.await(task)
     assert {:ok, address} = cube |> Cube.get_address(sale)
     assert %{"id" => 1234} = cube |> Cube.get(address)
   end

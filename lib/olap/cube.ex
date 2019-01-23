@@ -99,8 +99,8 @@ defmodule Olap.Cube do
         end)
 
       fun = fn -> cube |> Aggregator.aggregate(coordinate_trees_set) end
-      Olap.TaskSupervisor |> Task.Supervisor.start_child(fun, timeout: @aggregation_timeout)
-      :ok
+      task = Task.Supervisor.async_nolink(Olap.TaskSupervisor, fun, timeout: @aggregation_timeout)
+      {:ok, task}
     end
   end
 

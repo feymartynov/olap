@@ -54,16 +54,4 @@ defmodule Olap.Types.Money do
     acc = if include, do: [component | acc], else: acc
     do_get_coordinate(value, tail, acc)
   end
-
-  def add(%Money{amount: lhs, currency: currency}, %Money{amount: rhs, currency: currency}) do
-    Money.new(lhs + rhs, currency)
-  end
-
-  def add(%Money{currency: currency1}, %Money{currency: currency2}) do
-    raise "Currency exchange not supported. Attempted to add #{currency2} to #{currency1}"
-  end
-
-  def add(lhs, rhs) do
-    raise "Expected %Money{}, got #{inspect(lhs)} and #{inspect(rhs)}`"
-  end
 end

@@ -30,11 +30,11 @@ defmodule Olap.Cube.Aggregator do
     formula |> Formula.evaluate(items)
   end
 
-  defp handle_result(cube, aggregation, address, {:ok, {:ok, result}}) do
+  defp handle_result(cube, aggregation, address, {:ok, result}) do
     :ets.insert(cube.aggregations_table, {aggregation.name, address, result})
   end
 
-  defp handle_result(cube, aggregation, address, {:ok, {:error, reason}}) do
+  defp handle_result(cube, aggregation, address, {:error, reason}) do
     full_name = full_name(cube, aggregation)
     Logger.error("Aggregation `#{full_name}` failed on `#{inspect(address)}`: #{inspect(reason)}")
   end
@@ -44,5 +44,5 @@ defmodule Olap.Cube.Aggregator do
     Logger.error("Aggregation `#{full_name}` timed out on `#{inspect(address)}`")
   end
 
-  defp full_name(cube, aggregation), do: "`#{cube.name}.#{aggregation.name}`"
+  defp full_name(cube, aggregation), do: "#{cube.name}.#{aggregation.name}"
 end
