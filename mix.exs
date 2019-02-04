@@ -20,11 +20,7 @@ defmodule Olap.MixProject do
 
   defp deps do
     [
-      {:yaml_elixir, "~> 2.1"},
-      {:money, "~> 1.3"},
-      {:nimble_parsec, "~> 0.5"},
-      {:nimble_csv, "~> 0.3"},
-      {:scribe, "~> 0.8"}
+      {:yaml_elixir, "~> 2.1"}
     ]
   end
 end

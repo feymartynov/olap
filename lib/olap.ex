@@ -4,13 +4,7 @@ defmodule Olap do
   end
 
   def init do
-    with {:ok, config} <- config(),
-         :ok <- Olap.Reference.init(config["references"]),
-         :ok <- Olap.Cube.init(config["cubes"]),
+    with {:ok, _config} <- config(),
          do: :ok
-  end
-
-  def load_seeds do
-    with {:ok, config} <- config(), do: Olap.Seeds.load(config)
   end
 end
