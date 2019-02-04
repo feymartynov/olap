@@ -1,0 +1,29 @@
+dimensions:
+  - name: time
+    hierarchy:
+      - label: all
+        items:
+          - label: 2018
+            items:
+              - label: Q1
+              - label: Q2
+              - label: Q3
+              - label: Q4
+          - label: 2019
+            items:
+              - label: Q1
+              - label: Q2
+              - label: Q3
+              - label: Q4
+  - name: pnl
+    hierarchy:
+      - label: all
+        items:
+          - label: profit
+          - label: loss
+            weight: -1
+cubes:
+  - name: pnl_over_time
+    dimensions:
+      - time
+      - pnl
