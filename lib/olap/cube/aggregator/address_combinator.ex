@@ -2,14 +2,12 @@ defmodule Olap.Cube.Aggregator.AddressCombinator do
   defmodule CoordinateTreesSet do
     defstruct trees: []
 
-    def new(dimensions) do
-      %__MODULE__{trees: Enum.map(dimensions, fn _ -> %{} end)}
-    end
+    def new(size), do: %__MODULE__{trees: List.duplicate(%{}, size)}
 
     def put_address(%__MODULE__{} = trees_set, address) do
       Map.update!(trees_set, :trees, fn trees ->
         for {tree, coordinate} <- Stream.zip(trees, address) do
-          path = coordinate |> Enum.reverse() |> Enum.map(&Access.key(&1, %{}))
+          path = coordinate |> Enum.map(&Access.key(&1, %{}))
           tree |> put_in(path, nil)
         end
       end)

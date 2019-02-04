@@ -6,7 +6,7 @@ defmodule Olap.Types.String do
 
   def parse_string(_, str), do: {:ok, str}
 
-  def parse_hierarchy_level_value(_field, _value) do
+  def parse_hierarchy_level_value(_field, _value, _previous_levels) do
     {:error, "String hierarchy can't contain any levels"}
   end
 

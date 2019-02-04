@@ -18,8 +18,21 @@ defmodule Olap.Types.Timestamp do
 
   @levels ~w(second minute hour day week month quarter year)
 
-  def parse_hierarchy_level_value(field, value) when value in @levels, do: {:ok, value, field}
-  def parse_hierarchy_level_value(_, value), do: {:error, "Bad timestamp hiearchy level #{value}"}
+  def parse_hierarchy_level_value(field, value, previous_levels) do
+    case @levels |> Enum.find_index(&(&1 == value)) do
+      nil ->
+        {:error, "Bad timestamp hiearchy level #{value}"}
+
+      index ->
+        last_level = previous_levels |> List.last()
+
+        if is_nil(last_level) || index > Enum.find_index(@levels, &(&1 == last_level.level)) do
+          {:ok, value, field}
+        else
+          {:error, "`#{value}` can't go after `#{last_level.level}` in timestamp hierarchy"}
+        end
+    end
+  end
 
   def get_coordinate(_, value, hierarchy) do
     hierarchy
@@ -33,7 +46,7 @@ defmodule Olap.Types.Timestamp do
         end
     end)
     |> case do
-      {:ok, result} -> {:ok, Enum.reverse(result)}
+      {:ok, coordinate} -> {:ok, Enum.reverse(coordinate)}
       other -> other
     end
   end
@@ -42,8 +55,8 @@ defmodule Olap.Types.Timestamp do
   defp get_coordinate_component(value, "minute"), do: value.minute
   defp get_coordinate_component(value, "hour"), do: value.hour
   defp get_coordinate_component(value, "day"), do: value.day
-  defp get_coordinate_component(value, "week"), do: value |> Timex.iso_week() |> elem(1)
+  defp get_coordinate_component(value, "week"), do: rem(value.day, 7) + 1
   defp get_coordinate_component(value, "month"), do: value.month
-  defp get_coordinate_component(value, "quarter"), do: Timex.quarter(value.month)
+  defp get_coordinate_component(value, "quarter"), do: rem(value.month, 3) + 1
   defp get_coordinate_component(value, "year"), do: value.year
 end

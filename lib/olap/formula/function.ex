@@ -1,22 +1,22 @@
 defmodule Olap.Formula.Function do
-  @type signature :: {args :: [atom()], return :: atom()}
-  @callback signatures() :: %{signature => ([term()] -> term())}
-
   @functions Application.get_env(:olap, :functions)
 
   def get(name) do
     case @functions |> Map.fetch(name) do
-      {:ok, mod} -> {:ok, mod}
+      {:ok, signatures} -> {:ok, signatures}
       :error -> {:error, "Function `#{name}` is not defined"}
     end
   end
 
-  def find_signature(mod, arg_types) do
-    signatures = mod |> apply(:signatures, [])
+  def find_signature(name, arg_types) do
+    with {:ok, signatures} <- get(name) do
+      case Enum.find(signatures, fn {{types, _}, _} -> types == arg_types end) do
+        nil ->
+          {:error, "No signature matched for function `#{name}` with args #{inspect(arg_types)}"}
 
-    case Enum.find(signatures, fn {{types, _}, _} -> types == arg_types end) do
-      nil -> {:error, "No signature matched for function #{mod} with args #{inspect(arg_types)}"}
-      {signature, impl} -> {:ok, signature, impl}
+        {signature, impl} ->
+          {:ok, signature, impl}
+      end
     end
   end
 end

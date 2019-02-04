@@ -27,5 +27,5 @@ iex -S mix
 To load seeds:
 
 ```elixir
-Olap.load_seeds()
+Olap.load_seeds(config)
 ```

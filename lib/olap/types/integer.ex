@@ -13,7 +13,7 @@ defmodule Olap.Types.Integer do
     end
   end
 
-  def parse_hierarchy_level_value(field, value) do
+  def parse_hierarchy_level_value(field, value, _) do
     with {:ok, int} <- parse_string(%{}, value) do
       if int > 1 do
         {:ok, int, field}

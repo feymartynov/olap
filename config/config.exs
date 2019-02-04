@@ -1,5 +1,8 @@
 use Mix.Config
 
+alias Olap.Types
+alias Olap.Formula.Functions
+
 config :money,
   default_currency: :RUB,
   separator: ".",
@@ -11,14 +14,17 @@ config :money,
 config :olap,
   config_path: "config.yml",
   types: %{
-    "integer" => Olap.Types.Integer,
-    "string" => Olap.Types.String,
-    "timestamp" => Olap.Types.Timestamp,
-    "money" => Olap.Types.Money,
-    "reference" => Olap.Types.Reference
+    "integer" => Types.Integer,
+    "string" => Types.String,
+    "timestamp" => Types.Timestamp,
+    "money" => Types.Money,
+    "reference" => Types.Reference
   },
   functions: %{
-    "sum" => Olap.Formula.Functions.Sum
+    "sum" => %{
+      {[Types.Integer], Types.Integer} => &Functions.Sum.sum_int/1,
+      {[Types.Money], Types.Money} => &Functions.Sum.sum_money/1
+    }
   }
 
 import_config "#{Mix.env()}.exs"

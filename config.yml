@@ -105,6 +105,8 @@ cubes:
             include: true
       - field: branch
         hierarchy:
+          - level: branch
+            include: true
           - level: address
             include: false
           - level: city
@@ -115,6 +117,8 @@ cubes:
             include: true
       - field: customer
         hierarchy:
+          - level: customer
+            include: false
           - level: address
             include: false
           - level: city
@@ -125,6 +129,8 @@ cubes:
             include: true
       - field: product
         hierarchy:
+          - level: product
+            include: false
           - level: brand
             include: true
     aggregations:

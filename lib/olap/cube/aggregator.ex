@@ -10,7 +10,7 @@ defmodule Olap.Cube.Aggregator do
   def aggregate(%Cube{} = cube, %AddressCombinator.CoordinateTreesSet{} = coordiante_trees_set) do
     jobs = cube |> aggregation_jobs(coordiante_trees_set)
 
-    async_stream_opts = [timeout: @formula_timeout, on_timeout: :kill_task]
+    async_stream_opts = [timeout: @formula_timeout, on_timeout: :kill_task, max_concurrency: 1]
     results = jobs |> Task.async_stream(&formula_task/1, async_stream_opts)
 
     jobs
@@ -25,24 +25,57 @@ defmodule Olap.Cube.Aggregator do
     |> Stream.flat_map(fn address -> Stream.map(cube.aggregations, &{cube, &1, address}) end)
   end
 
-  defp formula_task({cube, %Aggregation{formula: formula}, address}) do
-    items = cube |> Cube.get_all(address)
-    formula |> Formula.evaluate(items)
+  defp formula_task({cube, %Aggregation{formula: formula} = aggregation, address}) do
+    address |> IO.inspect(charlists: :as_lists)
+
+    items =
+      case node_type(cube, address) do
+        :leaf ->
+          :ets.select(cube.leafs_table, [{:"$1", [], [:"$1"]}])
+          |> IO.inspect(charlists: :as_lists)
+
+          [cube |> Cube.fetch_by_address!(address)]
+
+        :consolidated ->
+          cube
+          |> Cube.get_inner(aggregation, address)
+          |> Enum.map(&%{List.first(aggregation.formula.variables).name => &1})
+      end
+
+    formula
+    |> Formula.evaluate(items)
+    |> IO.inspect(label: inspect(address, charlists: :as_lists))
   end
 
-  defp handle_result(cube, aggregation, address, {:ok, result}) do
-    :ets.insert(cube.aggregations_table, {aggregation.name, address, result})
+  # TODO: suboptimal
+  defp node_type(%Cube{dimensions: dimensions}, address) do
+    dimension_lengths =
+      for dimension <- dimensions do
+        dimension.hierarchy |> Stream.filter(& &1.include) |> Enum.count()
+      end
+
+    coordinate_lengths = address |> Enum.map(&length(&1))
+    if coordinate_lengths == dimension_lengths, do: :leaf, else: :consolidated
+  end
+
+  defp handle_result(cube, aggregation, address, {:ok, {:ok, result}}) do
+    :ets.insert(cube.aggregations_table, {{aggregation.name, address}, result})
+  end
+
+  defp handle_result(cube, aggregation, address, {:ok, other}) do
+    log_error(cube, aggregation, address, "formula evaluation failed: #{inspect(other)}")
   end
 
   defp handle_result(cube, aggregation, address, {:error, reason}) do
-    full_name = full_name(cube, aggregation)
-    Logger.error("Aggregation `#{full_name}` failed on `#{inspect(address)}`: #{inspect(reason)}")
+    log_error(cube, aggregation, address, reason)
   end
 
   defp handle_result(cube, aggregation, address, {:exit, :timeout}) do
-    full_name = full_name(cube, aggregation)
-    Logger.error("Aggregation `#{full_name}` timed out on `#{inspect(address)}`")
+    log_error(cube, aggregation, address, "timeout after #{@formula_timeout}ms")
   end
 
-  defp full_name(cube, aggregation), do: "#{cube.name}.#{aggregation.name}"
+  defp log_error(cube, aggregation, address, reason) do
+    full_name = "#{cube.name}.#{aggregation.name}"
+    Logger.error("Aggregation `#{full_name}` failed on `#{inspect(address)}`: #{inspect(reason)}")
+  end
 end

@@ -20,8 +20,8 @@ defmodule Olap.Cube.Dimension do
 
   defp build_hierarchy([spec | tail], field, acc) do
     with :ok <- validate_level_spec(spec),
-         {:ok, value, next_field} <- field |> parse_hierarchy_level_value(spec["level"]) do
-      level = %HierarchyLevel{level: value, include: spec["include"], field: field}
+         {:ok, value, next_field} <- field |> parse_hierarchy_level_value(spec["level"], acc) do
+      level = %HierarchyLevel{level: value, include: spec["include"], field: next_field}
       build_hierarchy(tail, next_field, [level | acc])
     end
   end
@@ -42,12 +42,12 @@ defmodule Olap.Cube.Dimension do
   defp validate_include(value) when is_boolean(value), do: :ok
   defp validate_include(_), do: {:error, "`include` is not a boolean"}
 
-  defp parse_hierarchy_level_value(_, nil) do
+  defp parse_hierarchy_level_value(_, nil, _) do
     {:error, "Null level value is not allowed"}
   end
 
-  defp parse_hierarchy_level_value(%Field{type: type} = field, str) do
-    apply(type, :parse_hierarchy_level_value, [field, str])
+  defp parse_hierarchy_level_value(%Field{type: type} = field, str, previous_levels) do
+    apply(type, :parse_hierarchy_level_value, [field, str, previous_levels])
   end
 
   def get_coordinate(%__MODULE__{field: field, hierarchy: hierarchy}, value) do

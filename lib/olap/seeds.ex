@@ -4,12 +4,16 @@ defmodule Olap.Seeds do
   alias NimbleCSV.RFC4180, as: CSV
   alias Olap.{Reference, Cube}
 
-  @limits [references: 10, cubes: 100]
+  @limits [references: 20, cubes: 30]
+  @chunk @limits[:cubes] + 1
   @id_field_spec %{"name" => "id", "type" => "integer"}
 
   def generate(config) do
     for {key, n} <- @limits, %{"name" => name, "fields" => fields} <- config[to_string(key)] do
-      stream = 0..n |> Stream.map(fn id -> [id | Enum.map(fields, &seed_field(&1, id, name))] end)
+      stream =
+        0..(n - 1)
+        |> Stream.map(fn id -> [id | Enum.map(fields, &seed_field(&1, id, name))] end)
+
       File.write!(path(key, name), CSV.dump_to_iodata(stream), [:write, :binary])
     end
   end
@@ -66,7 +70,7 @@ defmodule Olap.Seeds do
 
   defp put(stream, :cubes, name) do
     case Cube.get(name) do
-      %Cube{} = cube -> stream |> Stream.chunk_every(1000) |> Stream.map(&Cube.put(cube, &1))
+      %Cube{} = cube -> stream |> Stream.chunk_every(@chunk) |> Stream.map(&Cube.put(cube, &1))
       nil -> raise "Cube `#{name}` not found"
     end
   end

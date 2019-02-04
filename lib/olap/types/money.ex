@@ -32,7 +32,7 @@ defmodule Olap.Types.Money do
     end
   end
 
-  def parse_hierarchy_level_value(%Field{settings: %__MODULE__{}} = field, value) do
+  def parse_hierarchy_level_value(%Field{settings: %__MODULE__{}} = field, value, _) do
     one = Money.new(1, field.settings.currency)
 
     with {:ok, money} <- parse_string(field.settings, value) do
