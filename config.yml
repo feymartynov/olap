@@ -2,23 +2,31 @@ dimensions:
   - name: time
     hierarchy:
       - label: all
-        items:
-          - label: 2018
-            items:
+        nodes:
+          - label: "2018"
+            nodes:
               - label: Q1
+                aliases: ["2018Q1"]
               - label: Q2
+                aliases: ["2018Q2"]
               - label: Q3
+                aliases: ["2018Q3"]
               - label: Q4
-          - label: 2019
-            items:
+                aliases: ["2018Q4"]
+          - label: "2019"
+            nodes:
               - label: Q1
+                aliases: ["2019Q1"]
               - label: Q2
+                aliases: ["2019Q2"]
               - label: Q3
+                aliases: ["2019Q3"]
               - label: Q4
+                aliases: ["2019Q4"]
   - name: pnl
     hierarchy:
       - label: all
-        items:
+        nodes:
           - label: profit
           - label: loss
             weight: -1

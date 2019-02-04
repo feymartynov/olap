@@ -5,23 +5,34 @@ defmodule Olap do
 
   def init do
     with {:ok, config} <- config() do
-      dimensions = build_dimensions(config["dimensions"])
-      _cubes = build_cubes(config["cubes"], dimensions)
+      init_dimensions(config["dimensions"])
+      init_cubes(config["cubes"])
       :ok
     end
   end
 
-  defp build_dimensions(specs) do
-    for spec <- specs, into: %{} do
+  defp init_dimensions(specs) do
+    :ets.new(:dimensions, [:named_table, :public, read_concurrency: true])
+
+    for spec <- specs do
       dimension = Olap.Dimension.build(spec)
-      {dimension.name, dimension}
+      :ets.insert_new(:dimensions, {dimension.name, dimension})
     end
   end
 
-  defp build_cubes(specs, dimensions) do
-    for spec <- specs, into: %{} do
-      cube = Olap.Cube.build(spec, dimensions)
-      {cube.name, cube}
+  defp init_cubes(specs) do
+    :ets.new(:cubes, [:named_table, :public, read_concurrency: true])
+
+    for spec <- specs do
+      cube = Olap.Cube.build(spec)
+      :ets.insert_new(:cubes, {cube.name, cube})
+    end
+  end
+
+  def get(table, name) do
+    case :ets.lookup(table, name) do
+      [{^name, entity}] -> {:ok, entity}
+      [] -> :error
     end
   end
 end
