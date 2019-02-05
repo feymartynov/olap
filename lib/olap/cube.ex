@@ -1,15 +1,21 @@
 defmodule Olap.Cube do
-  defstruct name: nil, dimensions: [], table: nil
+  alias Olap.Hierarchy
 
-  def build(%{"name" => name, "dimensions" => dimension_names}) do
-    cube_dimensions =
-      for dimension_name <- dimension_names do
-        {:ok, dimension} = Olap.get(:dimensions, dimension_name)
-        dimension
+  defstruct name: nil, dimensions: [], table: nil, consolidation_cache_table: nil
+
+  def build(%{"name" => name, "dimensions" => hierarchy_names}) do
+    dimensions =
+      for hierarchy_name <- hierarchy_names do
+        {:ok, hierarchy} = Olap.get(:hierarchies, hierarchy_name)
+        hierarchy
       end
 
-    table = :ets.new(:cube, [:public])
-    %__MODULE__{name: name, dimensions: cube_dimensions, table: table}
+    %__MODULE__{
+      name: name,
+      dimensions: dimensions,
+      table: :ets.new(:cube, [:public]),
+      consolidation_cache_table: :ets.new(:cube_consolidation_cache, [:public])
+    }
   end
 
   def put(%__MODULE__{table: table} = cube, address, value) when is_list(address) do
@@ -26,10 +32,12 @@ defmodule Olap.Cube do
   defp cast_address(%__MODULE__{dimensions: dimensions}, address) do
     address
     |> Stream.zip(dimensions)
-    |> Enum.reduce_while({:ok, []}, fn {aliaz, dimension}, {:ok, acc} ->
-      case Map.fetch(dimension.leafs, aliaz) do
-        {:ok, ref} -> {:cont, {:ok, [ref | acc]}}
-        :error -> {:halt, {:error, "No leaf `#{aliaz}` in dimension `#{dimension.name}`"}}
+    |> Enum.reduce_while({:ok, []}, fn {as, dimension}, {:ok, acc} ->
+      with {:ok, node} <- Hierarchy.find_node(dimension, as),
+           true <- Hierarchy.leaf?(dimension, node) || {:error, "`#{as}` is not a leaf node"} do
+        {:cont, {:ok, [node.ref | acc]}}
+      else
+        other -> {:halt, other}
       end
     end)
     |> case do
@@ -39,14 +47,20 @@ defmodule Olap.Cube do
   end
 
   def consolidate(%__MODULE__{dimensions: dims} = cube, addr) when length(addr) == length(dims) do
-    case Enum.find_index(addr, &(&1.nodes != [])) do
+    addr
+    |> Enum.zip(dims)
+    |> Enum.find_index(fn {node, hierarchy} -> !Hierarchy.leaf?(hierarchy, node) end)
+    |> case do
       nil -> Enum.reduce(addr, get_leaf(cube, Enum.map(addr, & &1.ref)) || 0, &(&2 * &1.weight))
       index -> cube |> consolidate_children(addr, index) |> Enum.sum()
     end
   end
 
   defp consolidate_children(cube, address, index) do
-    for child_node <- Enum.at(address, index).nodes do
+    hierarchy = cube.dimensions |> Enum.at(index)
+    node = address |> Enum.at(index)
+
+    for child_node <- hierarchy |> Hierarchy.get_children(node) do
       child_address =
         Enum.map(Stream.with_index(address), fn
           {_, ^index} -> child_node

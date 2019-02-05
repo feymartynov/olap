@@ -5,18 +5,18 @@ defmodule Olap do
 
   def init do
     with {:ok, config} <- config() do
-      init_dimensions(config["dimensions"])
+      init_hierarchies(config["hierarchies"])
       init_cubes(config["cubes"])
       :ok
     end
   end
 
-  defp init_dimensions(specs) do
-    :ets.new(:dimensions, [:named_table, :public, read_concurrency: true])
+  defp init_hierarchies(specs) do
+    :ets.new(:hierarchies, [:named_table, :public, read_concurrency: true])
 
     for spec <- specs do
-      dimension = Olap.Dimension.build(spec)
-      :ets.insert_new(:dimensions, {dimension.name, dimension})
+      hierarchy = Olap.Hierarchy.build(spec)
+      :ets.insert_new(:hierarchies, {hierarchy.name, hierarchy})
     end
   end
 
