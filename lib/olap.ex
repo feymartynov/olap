@@ -11,7 +11,7 @@ defmodule Olap do
     end
   end
 
-  defp init_hierarchies(specs) do
+  def init_hierarchies(specs) do
     :ets.new(:hierarchies, [:named_table, :public, read_concurrency: true])
 
     for spec <- specs do
@@ -20,7 +20,7 @@ defmodule Olap do
     end
   end
 
-  defp init_cubes(specs) do
+  def init_cubes(specs) do
     :ets.new(:cubes, [:named_table, :public, read_concurrency: true])
 
     for spec <- specs do
@@ -30,7 +30,7 @@ defmodule Olap do
   end
 
   def get(table, name) do
-    case :ets.lookup(table, name) do
+    case table |> :ets.whereis() |> :ets.lookup(name) do
       [{^name, entity}] -> {:ok, entity}
       [] -> :error
     end

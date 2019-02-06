@@ -1,5 +1,5 @@
 defmodule Olap.PivotTableTest do
-  use ExUnit.Case
+  use Olap.DataCase
   alias Olap.{Cube, PivotTable}
 
   # +--------+-----------------------+-----------------------+
