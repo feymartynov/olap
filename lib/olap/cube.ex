@@ -20,7 +20,8 @@ defmodule Olap.Cube do
 
   def put(%__MODULE__{table: table} = cube, address, value) when is_list(address) do
     with {:ok, address} <- cube |> cast_address(address) do
-      :ets.insert(table, {address, value})
+      :ets.insert(table, {address_to_key(address), value})
+      invalidate_consolidation_cache(cube, address)
       :ok
     end
   end
@@ -33,10 +34,8 @@ defmodule Olap.Cube do
     address
     |> Stream.zip(dimensions)
     |> Enum.reduce_while({:ok, []}, fn {as, dimension}, {:ok, acc} ->
-      with {:ok, node} <- Hierarchy.find_node(dimension, as),
-           true <- Hierarchy.leaf?(dimension, node) || {:error, "`#{as}` is not a leaf node"} do
-        {:cont, {:ok, [node.ref | acc]}}
-      else
+      case Hierarchy.find_node(dimension, as) do
+        {:ok, node} -> {:cont, {:ok, [node | acc]}}
         other -> {:halt, other}
       end
     end)
@@ -46,12 +45,62 @@ defmodule Olap.Cube do
     end
   end
 
+  defp address_to_key(address), do: Enum.map(address, & &1.ref)
+
+  defp invalidate_consolidation_cache(%__MODULE__{} = cube, address) do
+    address
+    |> Enum.zip(cube.dimensions)
+    |> combinate()
+    |> Stream.each(&:ets.delete(cube.consolidation_cache_table, address_to_key(&1)))
+    |> Stream.run()
+  end
+
+  defp combinate([head]) do
+    head |> iterate() |> Stream.map(&[&1])
+  end
+
+  defp combinate([head | tail]) do
+    head |> iterate() |> Stream.flat_map(fn x -> tail |> combinate() |> Stream.map(&[x | &1]) end)
+  end
+
+  defp iterate({node, dimension}) do
+    Stream.unfold(node, fn
+      nil -> nil
+      x -> {x, Hierarchy.get_parent(dimension, x)}
+    end)
+  end
+
   def consolidate(%__MODULE__{dimensions: dims} = cube, addr) when length(addr) == length(dims) do
+    case get_cached_consolidated_value(cube, addr) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        value = cube |> do_consolidate(addr)
+        cube |> cache_consolidated_value(addr, value)
+        value
+    end
+  end
+
+  def get_cached_consolidated_value(%__MODULE__{} = cube, address) do
+    address = Enum.map(address, & &1.ref)
+
+    case :ets.lookup(cube.consolidation_cache_table, address) do
+      [{^address, value}] -> {:ok, value}
+      [] -> :error
+    end
+  end
+
+  defp cache_consolidated_value(%__MODULE__{} = cube, address, value) do
+    :ets.insert(cube.consolidation_cache_table, {address_to_key(address), value})
+  end
+
+  defp do_consolidate(%__MODULE__{dimensions: dims} = cube, addr) do
     addr
     |> Enum.zip(dims)
     |> Enum.find_index(fn {node, hierarchy} -> !Hierarchy.leaf?(hierarchy, node) end)
     |> case do
-      nil -> Enum.reduce(addr, get_leaf(cube, Enum.map(addr, & &1.ref)) || 0, &(&2 * &1.weight))
+      nil -> Enum.reduce(addr, get_leaf(cube, addr) || 0, &(&2 * &1.weight))
       index -> cube |> consolidate_children(addr, index) |> Enum.sum()
     end
   end
@@ -71,9 +120,11 @@ defmodule Olap.Cube do
     end
   end
 
-  defp get_leaf(%__MODULE__{table: table}, ref_address) do
-    case :ets.lookup(table, ref_address) do
-      [{^ref_address, value}] -> value
+  defp get_leaf(%__MODULE__{table: table}, address) do
+    key = address_to_key(address)
+
+    case :ets.lookup(table, key) do
+      [{^key, value}] -> value
       [] -> nil
     end
   end
