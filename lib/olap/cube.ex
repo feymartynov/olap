@@ -82,22 +82,22 @@ defmodule Olap.Cube do
     end
   end
 
-  def get_cached_consolidated_value(%__MODULE__{} = cube, address) do
+  def get_cached_consolidated_value(%__MODULE__{consolidation_cache_table: table}, address) do
     address = Enum.map(address, & &1.ref)
 
-    case :ets.lookup(cube.consolidation_cache_table, address) do
+    case :ets.lookup(table, address) do
       [{^address, value}] -> {:ok, value}
       [] -> :error
     end
   end
 
-  defp cache_consolidated_value(%__MODULE__{} = cube, address, value) do
-    :ets.insert(cube.consolidation_cache_table, {address_to_key(address), value})
+  defp cache_consolidated_value(%__MODULE__{consolidation_cache_table: table}, address, value) do
+    :ets.insert(table, {address_to_key(address), value})
   end
 
-  defp do_consolidate(%__MODULE__{dimensions: dims} = cube, addr) do
+  defp do_consolidate(%__MODULE__{dimensions: dimensions} = cube, addr) do
     addr
-    |> Enum.zip(dims)
+    |> Enum.zip(dimensions)
     |> Enum.find_index(fn {node, hierarchy} -> !Hierarchy.leaf?(hierarchy, node) end)
     |> case do
       nil -> Enum.reduce(addr, get_leaf(cube, addr) || 0, &(&2 * &1.weight))
@@ -108,8 +108,9 @@ defmodule Olap.Cube do
   defp consolidate_children(cube, address, index) do
     hierarchy = cube.dimensions |> Enum.at(index)
     node = address |> Enum.at(index)
+    children = hierarchy |> Hierarchy.get_children(node)
 
-    for child_node <- hierarchy |> Hierarchy.get_children(node) do
+    consolidate_child = fn child_node ->
       child_address =
         Enum.map(Stream.with_index(address), fn
           {_, ^index} -> child_node
@@ -118,6 +119,10 @@ defmodule Olap.Cube do
 
       cube |> consolidate(child_address)
     end
+
+    Olap.TaskSupervisor
+    |> Task.Supervisor.async_stream(children, consolidate_child, timeout: 3_600_000)
+    |> Enum.map(fn {:ok, result} -> result end)
   end
 
   defp get_leaf(%__MODULE__{table: table}, address) do
