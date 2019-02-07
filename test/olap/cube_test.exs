@@ -1,9 +1,9 @@
 defmodule Olap.CubeTest do
-  use Olap.DataCase
-  alias Olap.{Cube, Hierarchy}
+  use Olap.WorkspaceCase, async: true
+  alias Olap.{Cube, Hierarchy, Workspace}
 
-  test "consolidated values cache" do
-    {:ok, cube} = :cubes |> Olap.get("pnl_over_time")
+  test "consolidated values cache", %{workspace: workspace} do
+    cube = workspace |> Workspace.get_cube("pnl_over_time")
     address = cube.dimensions |> Enum.map(&Hierarchy.get_root(&1))
 
     # no caching without consolidation demand

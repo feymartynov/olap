@@ -3,16 +3,10 @@ defmodule Olap.Cube do
 
   defstruct name: nil, dimensions: [], table: nil, consolidation_cache_table: nil
 
-  def build(%{"name" => name, "dimensions" => hierarchy_names}) do
-    dimensions =
-      for hierarchy_name <- hierarchy_names do
-        {:ok, hierarchy} = Olap.get(:hierarchies, hierarchy_name)
-        hierarchy
-      end
-
+  def build(%{"name" => name, "dimensions" => hierarchy_names}, hierarchies) do
     %__MODULE__{
       name: name,
-      dimensions: dimensions,
+      dimensions: Enum.map(hierarchy_names, &hierarchies[&1]),
       table: :ets.new(:cube, [:public]),
       consolidation_cache_table: :ets.new(:cube_consolidation_cache, [:public])
     }

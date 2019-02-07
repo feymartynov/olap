@@ -1,6 +1,6 @@
 defmodule Olap.PivotTableTest do
-  use Olap.DataCase
-  alias Olap.{Cube, PivotTable}
+  use Olap.WorkspaceCase, async: true
+  alias Olap.{Cube, PivotTable, Workspace}
 
   # +--------+-----------------------+-----------------------+
   # |        |          2018         |          2019         |
@@ -28,8 +28,8 @@ defmodule Olap.PivotTableTest do
     {~w(2019Q1 loss), 50}
   ]
 
-  test "calculate pivot table" do
-    {:ok, cube} = Olap.get(:cubes, "pnl_over_time")
+  test "calculate pivot table", %{workspace: workspace} do
+    cube = workspace |> Workspace.get_cube("pnl_over_time")
 
     for {address, value} <- @data do
       :ok = cube |> Cube.put(address, value)

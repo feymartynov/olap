@@ -1,2 +1,2 @@
-alias Olap.{Cube, Dimension, PivotTable, Formula}
-{:ok, config} = Olap.config()
+alias Olap.{Cube, Dimension, Formula, PivotTable, Workspace}
+config = Workspace.get_config(:default)
