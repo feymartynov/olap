@@ -5,5 +5,7 @@ Toy in-memory OLAP database in Elixir with ETS backend.
 ```bash
 mix deps.get
 mix compile
-iex -S mix
+mix run --no-halt
 ```
+
+API endpoint: http://localhost:4000/api/v1

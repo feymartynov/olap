@@ -57,6 +57,17 @@ defmodule Olap.Hierarchy do
     root
   end
 
+  def walk_nodes(%__MODULE__{graph: graph} = hierarchy, fun) when is_function(fun, 2) do
+    do_walk_nodes([Olap.Hierarchy.get_root(hierarchy)], graph, fun)
+  end
+
+  defp do_walk_nodes(nodes, graph, fun) do
+    for node <- nodes do
+      children_results = graph |> :digraph.out_neighbours(node) |> do_walk_nodes(graph, fun)
+      fun.(node, children_results)
+    end
+  end
+
   def leaf?(%__MODULE__{graph: graph}, node) do
     :digraph.out_degree(graph, node) == 0
   end

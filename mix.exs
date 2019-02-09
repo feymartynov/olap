@@ -25,7 +25,13 @@ defmodule Olap.MixProject do
   defp deps do
     [
       {:yaml_elixir, "~> 2.1"},
-      {:nimble_parsec, "~> 0.5"}
+      {:nimble_parsec, "~> 0.5"},
+      {:plug, "~> 1.7"},
+      {:cowboy, "~> 2.6"},
+      {:plug_cowboy, "~> 2.0"},
+      {:jason, "~> 1.1"},
+      {:params, "~> 2.1"},
+      {:code_reloader, github: "gravityblast/code_reloader", only: :dev}
     ]
   end
 end

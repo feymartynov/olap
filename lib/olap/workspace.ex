@@ -1,16 +1,19 @@
 defmodule Olap.Workspace do
   use Agent
 
-  defstruct config: %{}, cubes: %{}
+  defstruct config: %{}, hierarchies: %{}, cubes: %{}
 
   def start_link([name, config]) do
     Agent.start_link(fn -> build(config) end, name: name)
   end
 
   defp build(config) do
+    hierarchies = build_hierarchies(config["hierarchies"])
+
     %__MODULE__{
       config: config,
-      cubes: build_cubes(config["cubes"], build_hierarchies(config["hierarchies"]))
+      hierarchies: hierarchies,
+      cubes: build_cubes(config["cubes"], hierarchies)
     }
   end
 
@@ -29,5 +32,8 @@ defmodule Olap.Workspace do
   end
 
   def get_config(workspace), do: workspace |> Agent.get(& &1.config)
+  def get_hierarchies(workspace), do: workspace |> Agent.get(& &1.hierarchies)
+  def get_hierarchy(workspace, name), do: workspace |> Agent.get(& &1.hierarchies[name])
+  def get_cubes(workspace), do: workspace |> Agent.get(& &1.cubes)
   def get_cube(workspace, name), do: workspace |> Agent.get(& &1.cubes[name])
 end
